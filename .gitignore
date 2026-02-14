@@ -1,0 +1,34 @@
+# Claude Code
+CLAUDE.md
+.claude/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Go build artifacts
+cloud-savings
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go test artifacts
+*.test
+*.out
+coverage.html
+
+# Environment
+.env
+.env.*
+
+# Report data (sensitive)
+*.json
+!go.mod
+!go.sum
+
+# OS
+.DS_Store
+Thumbs.db
