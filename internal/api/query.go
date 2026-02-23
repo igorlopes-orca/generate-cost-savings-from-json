@@ -1,6 +1,9 @@
 package api
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 // AssetQuery defines a per-asset-type query builder and response mapper.
 // Each supported Orca asset type (e.g. AwsEc2EbsVolume, AwsEc2Instance)
@@ -73,4 +76,29 @@ func ExtractNestedObjects(data map[string]json.RawMessage, key string) []OrcaAss
 		return nil
 	}
 	return nested.Value
+}
+
+// ExtractTime reads a time field from the Orca data map, parsing RFC3339-formatted strings.
+func ExtractTime(data map[string]json.RawMessage, key string) time.Time {
+	s := ExtractString(data, key)
+	if s == "" {
+		return time.Time{}
+	}
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return time.Time{}
+	}
+	return t
+}
+
+// DiskSnapshotQuery defines a per-disk-type query that fetches a disk with its nested snapshots.
+type DiskSnapshotQuery interface {
+	// DiskAssetType returns the Orca disk model this query handles (e.g. "AwsEc2EbsVolume").
+	DiskAssetType() string
+
+	// BuildPayload returns the request body to query a disk with nested snapshots.
+	BuildPayload(diskUniqueID string) any
+
+	// MapResponse extracts snapshot info from the response node.
+	MapResponse(node *OrcaAssetNode) ([]SnapshotInfo, error)
 }

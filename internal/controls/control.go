@@ -14,3 +14,9 @@ type SavingsCalculator interface {
 	// The asset parameter contains enriched details fetched from the Orca API.
 	Calculate(asset *api.AssetDetails) (float64, error)
 }
+
+// SnapshotEnricher is an optional interface that SavingsCalculator implementations
+// can implement to indicate they need per-disk snapshot data enriched before Calculate.
+type SnapshotEnricher interface {
+	NeedsSnapshotEnrichment() bool
+}

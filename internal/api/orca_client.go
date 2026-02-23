@@ -16,10 +16,11 @@ var ErrUnsupportedAssetType = errors.New("unsupported asset type")
 
 // OrcaClient implements AssetFetcher by querying the Orca serving-layer API.
 type OrcaClient struct {
-	baseURL    string
-	token      string
-	httpClient *http.Client
-	queries    map[string]AssetQuery
+	baseURL         string
+	token           string
+	httpClient      *http.Client
+	queries         map[string]AssetQuery
+	snapshotQueries map[string]DiskSnapshotQuery
 }
 
 // NewOrcaClient creates a new OrcaClient with registered asset-type queries.
@@ -30,20 +31,34 @@ func NewOrcaClient(baseURL, token string) *OrcaClient {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		queries: make(map[string]AssetQuery),
+		queries:         make(map[string]AssetQuery),
+		snapshotQueries: make(map[string]DiskSnapshotQuery),
 	}
 
-	// Register known queries
+	// Register known queries — AWS
 	c.registerQuery(&EC2InstanceQuery{})
 	c.registerQuery(&EBSVolumeQuery{})
 	c.registerQuery(&EBSSnapshotQuery{})
 	c.registerQuery(&KMSKeyQuery{})
+
+	// Register known queries — GCP
+	c.registerQuery(&GCPVMDiskQuery{})
+	c.registerQuery(&GCPVMInstanceQuery{})
+	c.registerQuery(&GCPKMSKeyQuery{})
+
+	// Register disk-snapshot queries (two-pass enrichment)
+	c.registerSnapshotQuery(&EBSVolumeSnapshotsQuery{})
+	c.registerSnapshotQuery(&GCPVMDiskSnapshotsQuery{})
 
 	return c
 }
 
 func (c *OrcaClient) registerQuery(q AssetQuery) {
 	c.queries[q.AssetType()] = q
+}
+
+func (c *OrcaClient) registerSnapshotQuery(q DiskSnapshotQuery) {
+	c.snapshotQueries[q.DiskAssetType()] = q
 }
 
 // FetchAsset dispatches to the correct query builder based on assetType,
@@ -57,6 +72,24 @@ func (c *OrcaClient) FetchAsset(ctx context.Context, assetType, assetUniqueID st
 	payload := query.BuildPayload(assetUniqueID)
 
 	node, err := c.doQuery(ctx, payload, assetType, assetUniqueID)
+	if err != nil {
+		return nil, err
+	}
+
+	return query.MapResponse(node)
+}
+
+// FetchDiskSnapshots fetches all snapshots for a given disk by querying the disk
+// with nested snapshot objects (two-pass enrichment).
+func (c *OrcaClient) FetchDiskSnapshots(ctx context.Context, diskAssetType, diskUniqueID string) ([]SnapshotInfo, error) {
+	query, ok := c.snapshotQueries[diskAssetType]
+	if !ok {
+		return nil, fmt.Errorf("%w %q: no snapshot query registered", ErrUnsupportedAssetType, diskAssetType)
+	}
+
+	payload := query.BuildPayload(diskUniqueID)
+
+	node, err := c.doQuery(ctx, payload, diskAssetType, diskUniqueID)
 	if err != nil {
 		return nil, err
 	}
