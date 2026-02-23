@@ -1,0 +1,9 @@
+Cloud Savings Report
+====================
+
+  Provider Control                                            Assets   Monthly Savings
+  ───────────────────────────────────────────────────────────────────────────────────
+  AWS      Identify and remove any disabled AWS Customer M...      1             $1.00
+  ═══════════════════════════════════════════════════════════════════════════════════
+           TOTAL POTENTIAL MONTHLY SAVINGS                         1             $1.00
+

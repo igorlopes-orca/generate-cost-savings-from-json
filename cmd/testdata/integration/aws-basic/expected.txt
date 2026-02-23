@@ -1,0 +1,10 @@
+Cloud Savings Report
+====================
+
+  Provider Control                                            Assets   Monthly Savings
+  ───────────────────────────────────────────────────────────────────────────────────
+  AWS      Ensure EBS volume is attached to an EC2 instance        1            $10.00
+  AWS      Low disk space utilization in your AWS EC2 EBS ...      1             $3.20
+  ═══════════════════════════════════════════════════════════════════════════════════
+           TOTAL POTENTIAL MONTHLY SAVINGS                         2            $13.20
+

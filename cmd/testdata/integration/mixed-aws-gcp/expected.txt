@@ -1,0 +1,11 @@
+Cloud Savings Report
+====================
+
+  Provider Control                                            Assets   Monthly Savings
+  ───────────────────────────────────────────────────────────────────────────────────
+  GCP      Low disk space utilization in your GCP Disk             1             $5.00
+  AWS      Ensure EBS volume is attached to an EC2 instance        1             $4.00
+  AWS      Identify and remove any disabled AWS Customer M...      2             $2.00
+  ═══════════════════════════════════════════════════════════════════════════════════
+           TOTAL POTENTIAL MONTHLY SAVINGS                         4            $11.00
+

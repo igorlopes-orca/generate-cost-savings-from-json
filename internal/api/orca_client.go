@@ -7,7 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 // ErrUnsupportedAssetType indicates that no query is registered for the given asset type.
@@ -97,30 +100,67 @@ func (c *OrcaClient) FetchDiskSnapshots(ctx context.Context, diskAssetType, disk
 	return query.MapResponse(node)
 }
 
-// doQuery handles the shared HTTP transport: marshalling, POST, auth, and response envelope parsing.
+// doQuery handles the shared HTTP transport: marshalling, POST, auth, response envelope parsing,
+// and retry with exponential backoff for 429 (Too Many Requests) responses.
 func (c *OrcaClient) doQuery(ctx context.Context, payload any, assetType, assetUniqueID string) (*OrcaAssetNode, error) {
+	const maxRetries = 3
+
 	jsonBody, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("marshal request body: %w", err)
 	}
 
 	url := c.baseURL + "/api/serving-layer/query"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonBody))
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "TOKEN "+c.token)
+	backoff := 1 * time.Second
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("execute request: %w", err)
+	var resp *http.Response
+	for attempt := 0; ; attempt++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonBody))
+		if err != nil {
+			return nil, fmt.Errorf("create request: %w", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "TOKEN "+c.token)
+
+		resp, err = c.httpClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("execute request: %w", err)
+		}
+
+		if resp.StatusCode == http.StatusTooManyRequests {
+			resp.Body.Close()
+			if attempt >= maxRetries {
+				return nil, fmt.Errorf("rate limited after %d retries for type=%s id=%s", maxRetries, assetType, assetUniqueID)
+			}
+			wait := backoff
+			if ra := resp.Header.Get("Retry-After"); ra != "" {
+				if secs, err := strconv.Atoi(ra); err == nil {
+					wait = time.Duration(secs) * time.Second
+				}
+			}
+			log.Warn().
+				Int("attempt", attempt+1).
+				Str("wait", wait.String()).
+				Str("asset_type", assetType).
+				Str("asset_unique_id", assetUniqueID).
+				Msg("rate limited by Orca API, retrying")
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(wait):
+			}
+			backoff *= 2
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return nil, fmt.Errorf("unexpected status %d from Orca API", resp.StatusCode)
+		}
+
+		break
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status %d from Orca API", resp.StatusCode)
-	}
 
 	var orcaResp orcaResponse
 	if err := json.NewDecoder(resp.Body).Decode(&orcaResp); err != nil {

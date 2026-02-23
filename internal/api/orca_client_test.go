@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 )
 
@@ -129,6 +130,62 @@ func TestOrcaClient_FetchAsset(t *testing.T) {
 			},
 			wantErr:         true,
 			wantErrContains: "unexpected status 500",
+		},
+		{
+			name:          "429 then success",
+			assetType:     "AwsEc2EbsVolume",
+			assetUniqueID: "AwsEc2EbsVolume_506464807365_c46cb523-bf6f-32a1-9a67-4694eb2f159a",
+			serverHandler: func() http.HandlerFunc {
+				var calls atomic.Int32
+				return func(w http.ResponseWriter, r *http.Request) {
+					n := calls.Add(1)
+					if n == 1 {
+						w.Header().Set("Retry-After", "0")
+						w.WriteHeader(http.StatusTooManyRequests)
+						return
+					}
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(map[string]any{
+						"status": "success",
+						"data": []map[string]any{
+							{
+								"id":              "c46cb523-3232-8a09-b9db-9ff358d87e99",
+								"name":            "vol-0e6eeace1b112dabb",
+								"type":            "AwsEc2EbsVolume",
+								"asset_unique_id": "AwsEc2EbsVolume_506464807365_c46cb523-bf6f-32a1-9a67-4694eb2f159a",
+								"data": map[string]any{
+									"Region":       map[string]any{"value": "us-east-1"},
+									"State":        map[string]any{"value": "in-use"},
+									"VolumeSize":   map[string]any{"value": float64(8)},
+									"VolumeType":   map[string]any{"value": "gp2"},
+									"UsedDiskSize": map[string]any{"value": float64(6)},
+								},
+							},
+						},
+					})
+				}
+			}(),
+			wantAsset: &AssetDetails{
+				AssetUniqueID: "AwsEc2EbsVolume_506464807365_c46cb523-bf6f-32a1-9a67-4694eb2f159a",
+				Type:          "AwsEc2EbsVolume",
+				Name:          "vol-0e6eeace1b112dabb",
+				Region:        "us-east-1",
+				State:         "in-use",
+				SizeGB:        8,
+				UsedGB:        6,
+				VolumeType:    "gp2",
+			},
+		},
+		{
+			name:          "429 exhausts retries",
+			assetType:     "AwsEc2EbsVolume",
+			assetUniqueID: "AwsEc2EbsVolume_123_ratelimited",
+			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Retry-After", "0")
+				w.WriteHeader(http.StatusTooManyRequests)
+			},
+			wantErr:         true,
+			wantErrContains: "rate limited after 3 retries",
 		},
 	}
 

@@ -1,0 +1,10 @@
+Cloud Savings Report
+====================
+
+  Provider Control                                            Assets   Monthly Savings
+  ───────────────────────────────────────────────────────────────────────────────────
+  GCP      Low disk space utilization in your GCP Disk             1            $13.60
+  GCP      Ensure GCP disk is attached to a virtual machine        1             $8.00
+  ═══════════════════════════════════════════════════════════════════════════════════
+           TOTAL POTENTIAL MONTHLY SAVINGS                         2            $21.60
+
