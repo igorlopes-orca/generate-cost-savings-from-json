@@ -6,20 +6,20 @@ import (
 )
 
 func init() {
-	Register(&AWSEBSMultiSnapshot{})
+	Register(&GCPVMMultiSnapshot{})
 }
 
-// AWSEBSMultiSnapshot calculates savings from keeping only one snapshot per EBS volume.
+// GCPVMMultiSnapshot calculates savings from keeping only one snapshot per GCP disk.
 // For each disk, extra snapshots beyond the first are considered waste.
-type AWSEBSMultiSnapshot struct{}
+type GCPVMMultiSnapshot struct{}
 
-func (c *AWSEBSMultiSnapshot) ControlName() string {
-	return "Ensure EC2 instances with EBS volumes have only one updated snapshot"
+func (c *GCPVMMultiSnapshot) ControlName() string {
+	return "Ensure gcp VM's disks have only one snapshot"
 }
 
-func (c *AWSEBSMultiSnapshot) NeedsSnapshotEnrichment() bool { return true }
+func (c *GCPVMMultiSnapshot) NeedsSnapshotEnrichment() bool { return true }
 
-func (c *AWSEBSMultiSnapshot) Calculate(asset *api.AssetDetails) (float64, error) {
+func (c *GCPVMMultiSnapshot) Calculate(asset *api.AssetDetails) (float64, error) {
 	var total float64
 	for _, d := range asset.Disks {
 		count := len(d.Snapshots)
@@ -32,7 +32,7 @@ func (c *AWSEBSMultiSnapshot) Calculate(asset *api.AssetDetails) (float64, error
 			sumSize += s.SizeGB
 		}
 		avgSize := sumSize / float64(count)
-		total += float64(extra) * avgSize * pricing.EBSSnapshotPricePerGB
+		total += float64(extra) * avgSize * pricing.GCPSnapshotPricePerGB
 	}
 	return total, nil
 }

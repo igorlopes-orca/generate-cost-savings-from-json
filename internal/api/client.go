@@ -9,6 +9,7 @@ import (
 // AssetFetcher retrieves detailed asset information from the Orca API.
 type AssetFetcher interface {
 	FetchAsset(ctx context.Context, assetType, assetUniqueID string) (*AssetDetails, error)
+	FetchDiskSnapshots(ctx context.Context, diskAssetType, diskUniqueID string) ([]SnapshotInfo, error)
 }
 
 // AssetDetails contains the enriched data returned by the Orca API for a single asset.
@@ -52,4 +53,8 @@ type StubFetcher struct{}
 
 func (s *StubFetcher) FetchAsset(_ context.Context, assetType, assetUniqueID string) (*AssetDetails, error) {
 	return nil, fmt.Errorf("stub fetcher: Orca API not yet configured (type=%s asset=%s)", assetType, assetUniqueID)
+}
+
+func (s *StubFetcher) FetchDiskSnapshots(_ context.Context, diskAssetType, diskUniqueID string) ([]SnapshotInfo, error) {
+	return nil, fmt.Errorf("stub fetcher: Orca API not yet configured (type=%s disk=%s)", diskAssetType, diskUniqueID)
 }

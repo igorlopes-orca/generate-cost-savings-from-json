@@ -79,7 +79,8 @@ func run(cmd *cobra.Command, args []string) error {
 }
 
 // logControlSummary logs the count of non-compliant assets per control (INFO)
-// and which controls have calculators registered vs not (DEBUG).
+// and which controls have calculators registered (DEBUG).
+// Unsupported controls are warned about in processFindingsByControl to avoid duplicate messages.
 func logControlSummary(findings []models.ReportEntry) {
 	type controlInfo struct {
 		count         int
@@ -110,11 +111,6 @@ func logControlSummary(findings []models.ReportEntry) {
 				Str("control", name).
 				Str("cloud_provider", info.cloudProvider).
 				Msg("calculator available")
-		} else {
-			log.Debug().
-				Str("control", name).
-				Str("cloud_provider", info.cloudProvider).
-				Msg("no calculator available")
 		}
 	}
 }
@@ -139,10 +135,11 @@ func processFindingsByControl(ctx context.Context, fetcher api.AssetFetcher, fin
 	for _, g := range grouped {
 		calc := controls.Get(g.name)
 		if calc == nil {
-			log.Debug().
+			log.Warn().
 				Str("control", g.name).
 				Str("cloud_provider", g.cloudProvider).
-				Msg("no calculator registered, skipping")
+				Int("assets", len(g.assets)).
+				Msg("no calculator registered, skipping control")
 			continue
 		}
 
@@ -171,6 +168,11 @@ func processFindingsByControl(ctx context.Context, fetcher api.AssetFetcher, fin
 				continue
 			}
 
+			// Two-pass enrichment: fetch per-disk snapshots if the calculator needs them.
+			if enricher, ok := calc.(controls.SnapshotEnricher); ok && enricher.NeedsSnapshotEnrichment() {
+				enrichDiskSnapshots(ctx, fetcher, details, assetLog)
+			}
+
 			savings, err := calc.Calculate(details)
 			if err != nil {
 				assetLog.Error().Err(err).Msg("failed to calculate savings")
@@ -185,6 +187,7 @@ func processFindingsByControl(ctx context.Context, fetcher api.AssetFetcher, fin
 
 		results = append(results, output.ControlResult{
 			ControlName:    g.name,
+			CloudProvider:  g.cloudProvider,
 			AssetCount:     successCount,
 			MonthlySavings: totalSavings,
 		})
@@ -225,6 +228,40 @@ func readReport(path string) ([]models.ReportEntry, error) {
 	}
 
 	return entries, nil
+}
+
+// enrichDiskSnapshots performs the second pass of enrichment: for each disk
+// in the asset, it fetches the disk with nested snapshots and populates
+// DiskInfo.Snapshots.
+func enrichDiskSnapshots(ctx context.Context, fetcher api.AssetFetcher, details *api.AssetDetails, assetLog zerolog.Logger) {
+	diskType := diskAssetType(details.Type)
+	if diskType == "" {
+		assetLog.Debug().Str("asset_type", details.Type).Msg("no disk type mapping, skipping snapshot enrichment")
+		return
+	}
+
+	for i := range details.Disks {
+		disk := &details.Disks[i]
+		snapshots, err := fetcher.FetchDiskSnapshots(ctx, diskType, disk.ID)
+		if err != nil {
+			assetLog.Debug().Err(err).Str("disk_id", disk.ID).Msg("no snapshots found for disk")
+			continue
+		}
+		disk.Snapshots = snapshots
+		assetLog.Debug().Str("disk_id", disk.ID).Int("snapshot_count", len(snapshots)).Msg("enriched disk with snapshots")
+	}
+}
+
+// diskAssetType maps an instance asset type to its disk asset type for snapshot queries.
+func diskAssetType(instanceType string) string {
+	switch instanceType {
+	case "AwsEc2Instance":
+		return "AwsEc2EbsVolume"
+	case "GcpVmInstance":
+		return "GcpVmDisk"
+	default:
+		return ""
+	}
 }
 
 func configureLogging() {

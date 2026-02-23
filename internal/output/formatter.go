@@ -10,6 +10,7 @@ import (
 // ControlResult holds the aggregated savings for a single control.
 type ControlResult struct {
 	ControlName    string
+	CloudProvider  string
 	AssetCount     int
 	MonthlySavings float64
 }
@@ -37,20 +38,20 @@ func (f *Formatter) Render(results []ControlResult) {
 	fmt.Fprintln(f.w, "Cloud Savings Report")
 	fmt.Fprintln(f.w, "====================")
 	fmt.Fprintln(f.w)
-	fmt.Fprintf(f.w, "  %-55s %6s   %15s\n", "Control", "Assets", "Monthly Savings")
-	fmt.Fprintf(f.w, "  %s\n", strings.Repeat("─", 78))
+	fmt.Fprintf(f.w, "  %-8s %-50s %6s   %15s\n", "Provider", "Control", "Assets", "Monthly Savings")
+	fmt.Fprintf(f.w, "  %s\n", strings.Repeat("─", 83))
 
 	for _, r := range results {
 		if r.AssetCount == 0 {
 			continue
 		}
-		fmt.Fprintf(f.w, "  %-55s %6d   %15s\n", truncate(r.ControlName, 55), r.AssetCount, formatUSD(r.MonthlySavings))
+		fmt.Fprintf(f.w, "  %-8s %-50s %6d   %15s\n", strings.ToUpper(r.CloudProvider), truncate(r.ControlName, 50), r.AssetCount, formatUSD(r.MonthlySavings))
 		totalAssets += r.AssetCount
 		totalSavings += r.MonthlySavings
 	}
 
-	fmt.Fprintf(f.w, "  %s\n", strings.Repeat("═", 78))
-	fmt.Fprintf(f.w, "  %-55s %6d   %15s\n", "TOTAL POTENTIAL MONTHLY SAVINGS", totalAssets, formatUSD(totalSavings))
+	fmt.Fprintf(f.w, "  %s\n", strings.Repeat("═", 83))
+	fmt.Fprintf(f.w, "  %-8s %-50s %6d   %15s\n", "", "TOTAL POTENTIAL MONTHLY SAVINGS", totalAssets, formatUSD(totalSavings))
 	fmt.Fprintln(f.w)
 }
 

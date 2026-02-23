@@ -2,7 +2,7 @@
 
 A CLI tool that analyzes [Orca Security](https://orca.security) cost optimization reports and calculates potential monthly USD savings from non-compliant cloud assets.
 
-**v1 supports AWS controls only.** Azure and GCP controls are planned for a future release.
+**v1 supports AWS + GCP controls.** Azure controls are planned for a future release.
 
 ## Installation
 
@@ -43,7 +43,7 @@ Cloud Savings Report
 
 ## Pricing
 
-v1 uses **hardcoded pricing tables** (us-east-1 rates). There is no dependency on the AWS Pricing API. Prices are defined in `internal/pricing/aws.go`.
+v1 uses **hardcoded pricing tables**. There is no dependency on any cloud pricing API. AWS prices (us-east-1) are in `internal/pricing/aws.go`, GCP prices (us-central1) are in `internal/pricing/gcp.go`.
 
 ### EBS Price Table
 
@@ -64,6 +64,23 @@ v1 uses **hardcoded pricing tables** (us-east-1 rates). There is no dependency o
 ### KMS Pricing
 
 - Disabled CMK: **$1.00/key/month** (fixed)
+
+### GCP Disk Price Table
+
+| Disk Type | $/GB/month |
+|-----------|-----------|
+| pd-standard | 0.04 |
+| pd-balanced | 0.10 |
+| pd-ssd | 0.17 |
+| hyperdisk-balanced | 0.06 |
+
+### GCP Snapshot Pricing
+
+- Disk snapshots: **$0.026/GB/month**
+
+### GCP KMS Pricing
+
+- Disabled key version: **$0.06/key/month** (fixed)
 
 ---
 
@@ -90,6 +107,26 @@ Each asset type has a dedicated query builder that fetches enriched details via 
 | `AwsEc2EbsSnapshot` | `ebs_snapshot_query.go` | #4 | VolumeSize, UsedDiskSize, Region, State |
 | `AwsKmsKey` | `kms_key_query.go` | #7 | State, Region |
 
+---
+
+## Supported Controls (GCP)
+
+| # | Control Name (exact) | Asset Type | Formula |
+|---|---|---|---|
+| 1 | `Ensure GCP disk is attached to a virtual machine` | `GcpVmDisk` | `size_gb × disk_price[type]` |
+| 2 | `Low disk space utilization in your GCP Disk` | `GcpVmDisk` | `(size_gb - used_gb) × disk_price[type]` |
+| 3 | `Ensure gcp VM's disks have only one snapshot` | `GcpVmInstance` | `sum((disk.snapshot_count - 1) × avg_snapshot_size × $0.026)` per disk |
+| 4 | `GCP VM's disks with snapshots created more than 90 days ago` | `GcpVmInstance` | `sum(snap.size_gb × $0.026)` for snapshots older than 90 days |
+| 5 | `Identify and remove any disabled GCP KMS primary key versions` | `GcpKmsKey` | `$0.06` fixed |
+
+### Supported Orca API Asset Types (GCP)
+
+| Orca Model | Query File | Used By Controls | Key Fields |
+|---|---|---|---|
+| `GcpVmDisk` | `gcp_vm_disk_query.go` | #1, #2 | SizeGb, VolumeType, UsedDiskSize, Region, State |
+| `GcpVmInstance` | `gcp_vm_instance_query.go` | #3, #4 | State, nested InstanceDisks (Name) |
+| `GcpKmsKey` | `gcp_kms_key_query.go` | #5 | State, Region |
+
 ### Not Supported
 
 | Control Name | Reason |
@@ -101,7 +138,7 @@ Each asset type has a dedicated query builder that fetches enriched details via 
 
 ### Planned (Future)
 
-Azure and GCP controls will be added in a future release.
+Azure controls will be added in a future release.
 
 ---
 
