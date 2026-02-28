@@ -115,6 +115,9 @@ func logControlSummary(findings []models.ReportEntry) {
 	}
 }
 
+// TODO: Refactor this into a separate file, this logic here might be reused
+// we should be able to have a single calculator that does it for all the providers
+// instead of having anything tied to the provider
 func processFindingsByControl(ctx context.Context, fetcher api.AssetFetcher, findings []models.ReportEntry) []output.ControlResult {
 	type controlGroup struct {
 		name          string

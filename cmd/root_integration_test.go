@@ -118,8 +118,8 @@ func TestIntegrationFixtures(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			reportPath := filepath.Join("testdata", "integration", tt.name, "report.json")
-			expectedPath := filepath.Join("testdata", "integration", tt.name, "expected.txt")
+			reportPath := filepath.Join("/Users/igorlopes/Documents/orca_internal/generate-cost-savings-from-json/cmd/"+"testdata", "integration", tt.name, "report.json")
+			expectedPath := filepath.Join("/Users/igorlopes/Documents/orca_internal/generate-cost-savings-from-json/cmd/"+"testdata", "integration", tt.name, "expected.txt")
 
 			entries, err := readReport(reportPath)
 			if err != nil {

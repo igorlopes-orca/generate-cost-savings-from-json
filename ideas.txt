@@ -1,0 +1,8 @@
+1. I want to work on a refactor so that we can have an anticorrutpion layer between the Orca APIs and our service. Currently everything is so tied, we work in the root.go file and everywhere else in the code with pretty much same data we retrieve from Orca, but we do not need it and we do not care about this data. 
+
+Let's create a segregation and start defining models that will be used by the business logic. So far what I can visualize are three main models: VirtualMachines, Volumes and Snapshots. We will converge all entities from different providers to these 3 models and use them as the main models. When we collect data from Orca there will always be an API layer in between that's responsible for returning the business models from the Orca API and enriching if needed. We will structure the Orca API interface in a way that we can easily map them to the model and etc, of course we will have a mapper layerin the API (or outside of it, where it is doesn't matter).
+
+This will allow us to evolve the codebase in a better way and also be able to simply read the code better, the Orca API and it's signatures etc make the code really hard to understand.
+
+2. The pricing layer for now is currently hard coded and that's fine, however we want to start gradually refactoring it so that we can eventually collect the prices by calling the public APIs from the providers. Again we want to have a similar object where we can map the prices and then eventually the codebase will be cloud agnostic, simply by having the definition of the provider we'd "GetPrice(provider, service) and be able to receive a common price object that works accross providers, this is optional and we can have it by provider if needed by keep it in mind.
+
