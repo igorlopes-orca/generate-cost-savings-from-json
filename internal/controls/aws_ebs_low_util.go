@@ -19,6 +19,9 @@ func (c *AWSEBSLowUtil) ControlName() string {
 }
 
 func (c *AWSEBSLowUtil) Calculate(asset *api.AssetDetails) (float64, error) {
+	if asset.UsedGB == 0 {
+		return 0, fmt.Errorf("low-util EBS %s: used disk size unavailable", asset.AssetUniqueID)
+	}
 	price, ok := pricing.EBSPricePerGB[asset.VolumeType]
 	if !ok {
 		return 0, fmt.Errorf("low-util EBS %s: unknown volume type %q", asset.AssetUniqueID, asset.VolumeType)

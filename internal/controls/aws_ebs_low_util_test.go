@@ -53,6 +53,16 @@ func TestAWSEBSLowUtil_Calculate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "used disk size unavailable returns error",
+			asset: &api.AssetDetails{
+				AssetUniqueID: "vol-5",
+				SizeGB:        100,
+				UsedGB:        0,
+				VolumeType:    "gp2",
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

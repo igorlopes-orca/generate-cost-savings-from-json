@@ -19,6 +19,9 @@ func (c *GCPDiskLowUtil) ControlName() string {
 }
 
 func (c *GCPDiskLowUtil) Calculate(asset *api.AssetDetails) (float64, error) {
+	if asset.UsedGB == 0 {
+		return 0, fmt.Errorf("low-util GCP disk %s: used disk size unavailable", asset.AssetUniqueID)
+	}
 	price, ok := pricing.GCPDiskPricePerGB[asset.VolumeType]
 	if !ok {
 		return 0, fmt.Errorf("low-util GCP disk %s: unknown volume type %q", asset.AssetUniqueID, asset.VolumeType)
