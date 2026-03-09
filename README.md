@@ -12,8 +12,12 @@ go install github.com/igorlopes-orca/generate-cost-savings-from-json@latest
 
 ## Usage
 
+The JSON input is the "Orca Cost Optimization" report in JSON format, but it **must be generated** with **Detailed Report** option enabled, because it requires also asset data to calculate the savings, only control data is not enough.
+
+After the report is generated, create an API Token in customer environment with Asset read-only access.
+
 ```bash
-cloud-savings --file cost_optimization_report.json --api-token $ORCA_API_TOKEN
+cloud-savings --file cost_optimization_report.json --api-token $TOKEN
 ```
 
 ### Flags
