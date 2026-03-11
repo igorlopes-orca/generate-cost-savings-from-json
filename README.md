@@ -65,6 +65,8 @@ v1 uses **hardcoded pricing tables**. There is no dependency on any cloud pricin
 
 - EBS snapshots: **$0.05/GB/month**
 
+> **Tip:** The savings reported for `Ensure EC2 instances with EBS volumes have only one updated snapshot` and `Ensure EC2 instances with EBS volumes with snapshots created less than 90 days ago` use the source disk size as a proxy for snapshot size, which is typically an overestimate. Multiply the reported savings for those controls by 0.2–0.3 to get a more realistic range.
+
 ### KMS Pricing
 
 - Disabled CMK: **$1.00/key/month** (fixed)
@@ -81,6 +83,8 @@ v1 uses **hardcoded pricing tables**. There is no dependency on any cloud pricin
 ### GCP Snapshot Pricing
 
 - Disk snapshots: **$0.026/GB/month**
+
+> **Tip:** The savings reported for `Ensure gcp VM's disks have only one snapshot` and `GCP VM's disks with snapshots created more than 90 days ago` use the source disk size as a proxy for snapshot size, which is typically an overestimate. Multiply the reported savings for those controls by 0.2–0.3 to get a more realistic range.
 
 ### GCP KMS Pricing
 
